@@ -20,6 +20,11 @@ class MapUnit {
     ArrayList<Integer> unitScoreByPhase = new ArrayList<Integer>();
     ArrayList<Integer> enemyScoreByPhase = new ArrayList<Integer>();
 
+    int placedListIdx = -1;
+    int spawnListIdx = -1;
+
+    MapUnit mapUnitInfoSpawnedFrom = null;
+
     MapUnit copy() {
         MapUnit m = new MapUnit();
         m.version = version;
@@ -50,6 +55,9 @@ class MapUnit {
         for (int i = 0; i < waterBoxes.length; i++)
             for (int j = 0; j < 6; j++)
                 m.waterBoxes[i][j] = waterBoxes[i][j];
+        m.placedListIdx = placedListIdx;
+        m.spawnListIdx = spawnListIdx;
+        m.mapUnitInfoSpawnedFrom = this;
         return m;
     }
 
@@ -200,6 +208,5 @@ class MapUnit {
         }
         return ret;
     }
-
     
 }

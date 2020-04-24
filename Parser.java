@@ -141,7 +141,8 @@ class Parser {
         }
 
         try {
-            g.println("File read: " + fileName);
+            if (CaveGen.prints) 
+                System.out.println("File read: " + fileName);
             Scanner s = new Scanner(sb2.toString());
             StringBuilder sb = new StringBuilder();
             while (s.hasNextLine()){
@@ -198,13 +199,18 @@ class Parser {
     }
 
     void parseAll() {
-        Scanner sc = read("files/" + g.fileSystem + "/" + "caveinfo/" + g.caveInfoName);
+        String jpn = (CaveGen.fileSystem.equals("gc") && CaveGen.region.equals("jpn")) ? "-jpn" : "";
+        Scanner sc = read("files/" + g.fileSystem + "/" + "caveinfo" + jpn + "/" + g.caveInfoName);
 
         nextCloseBrace(sc);
         int numSublevels = nextInt(sc);
         nextBrace(sc);
 
         assert g.sublevel <= numSublevels && g.sublevel > 0;
+        if (g.sublevel > numSublevels || g.sublevel <= 0) {
+            CaveViewer.caveViewer.reportBuffer.append("Error: Bad sublevel number");
+            CaveViewer.caveViewer.update();
+        }
         g.isFinalFloor = g.sublevel == numSublevels;
         //System.out.println(numSublevels); 
 
@@ -244,12 +250,19 @@ class Parser {
             
         }
 
-        g.spawnMaps = new ArrayList<MapUnit>();
-        g.spawnMainTeki = new ArrayList<Teki>();
+        g.spawnMapUnits = new ArrayList<MapUnit>();
+        g.spawnMapUnitsSorted = new ArrayList<MapUnit>();
+        g.spawnMapUnitsSortedAndRotated = new ArrayList<MapUnit>();
+        g.spawnTeki0 = new ArrayList<Teki>();
+        g.spawnTeki1 = new ArrayList<Teki>();
+        g.spawnTeki5 = new ArrayList<Teki>();
+        g.spawnTeki8 = new ArrayList<Teki>();
+        g.spawnTeki6 = new ArrayList<Teki>();
         g.spawnItem = new ArrayList<Item>();
         g.spawnGate = new ArrayList<Gate>();
         g.spawnCapTeki = new ArrayList<Teki>();
         g.spawnCapFallingTeki = new ArrayList<Teki>();
+        g.spawnTekiConsolidated = new ArrayList<Teki>();
 
         int n;
         nextBrace(sc);
@@ -286,7 +299,17 @@ class Parser {
                 t.tekiName = rawTekiName.substring(0,i_);
                 t.itemInside = rawTekiName.substring(i_+1);
             } else t.tekiName = rawTekiName;
-            g.spawnMainTeki.add(t);
+            if (t.type == 0)
+                g.spawnTeki0.add(t);
+            if (t.type == 1)
+                g.spawnTeki1.add(t);
+            if (t.type == 5)
+                g.spawnTeki5.add(t);
+            if (t.type == 8)
+                g.spawnTeki8.add(t);
+            if (t.type == 6)
+                g.spawnTeki6.add(t);
+            g.spawnTekiConsolidated.add(t);
         }
 
         nextBrace(sc);
@@ -352,6 +375,7 @@ class Parser {
 
             if (t.fallType == 0 || g.isPomGroup(t)) g.spawnCapTeki.add(t);
             else g.spawnCapFallingTeki.add(t);
+            g.spawnTekiConsolidated.add(t);
         }
 
         sc = read("files/" + g.fileSystem + "/" + "units/" + g.caveUnitFile);
@@ -408,6 +432,7 @@ class Parser {
                 sp.radius = nextFloat(sc2);
                 sp.minNum = nextInt(sc2);
                 sp.maxNum = nextInt(sc2);
+                sp.spawnListIdx = m.spawnPoints.size();
                 m.spawnPoints.add(sp);
                 sp.mapUnit = m;
             }
@@ -444,22 +469,49 @@ class Parser {
                 m.wayPoints.add(wp);
             }
 
-            g.spawnMaps.add(m);
+            g.spawnMapUnits.add(m);
+
+            sc2.close();
+            sc3.close();
+            sc4.close();
         }
 
-        CaveGen.spawnMapUnitsSorted = new ArrayList<MapUnit>();
-        for (MapUnit m: g.spawnMaps)
-            CaveGen.spawnMapUnitsSorted.add(m);
-        g.sortBySizeAndDoors(CaveGen.spawnMapUnitsSorted);
+        sc.close();
+
+        for (int i = 0; i < g.spawnTeki0.size(); i++)
+            g.spawnTeki0.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnTeki1.size(); i++)
+            g.spawnTeki1.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnTeki5.size(); i++)
+            g.spawnTeki5.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnTeki8.size(); i++)
+            g.spawnTeki8.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnTeki6.size(); i++)
+            g.spawnTeki6.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnItem.size(); i++)
+            g.spawnItem.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnGate.size(); i++)
+            g.spawnGate.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnCapTeki.size(); i++)
+            g.spawnCapTeki.get(i).spawnListIdx = i;
+        for (int i = 0; i < g.spawnCapFallingTeki.size(); i++)
+            g.spawnCapFallingTeki.get(i).spawnListIdx = i;
 
         return;
     }
 
-    static HashMap<String, Integer> tekiDifficultyMap = new HashMap<String, Integer>();
+    static HashMap<String, Integer> tekiDifficulty = new HashMap<String, Integer>();
+    static HashMap<String, Integer> minCarry = new HashMap<String, Integer>();
+    static HashMap<String, Integer> maxCarry = new HashMap<String, Integer>();
+    static HashMap<String, Integer> pokos = new HashMap<String, Integer>();
+    static HashMap<String, Integer> seeds = new HashMap<String, Integer>();
+    static HashMap<String, Integer> seedsMin = new HashMap<String, Integer>();
+    static HashMap<String, Integer> depth = new HashMap<String, Integer>();
 
-    static void readEnemyFile() {
+
+    static void readConfigFiles() {
         try {
-            BufferedReader br = new BufferedReader(new FileReader("Enemy.csv"));
+            BufferedReader br = new BufferedReader(new FileReader("files/" + CaveGen.fileSystem + "/config/teki_difficulty.csv"));
             String line;
             while ((line = br.readLine()) != null) {
                 Scanner sc = new Scanner(line);
@@ -469,7 +521,26 @@ class Parser {
                 String commonName = sc.next();
                 String internalName = sc.next();
                 int difficulty = Integer.parseInt(sc.next());
-                tekiDifficultyMap.put(internalName.toLowerCase(), difficulty);
+                tekiDifficulty.put(internalName.toLowerCase(), difficulty);
+                sc.close();
+            }
+            br.close();
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        try {
+            BufferedReader br = new BufferedReader(new FileReader("files/" + CaveGen.fileSystem + "/config/config_" + CaveGen.region + ".txt"));
+            String line;
+            while ((line = br.readLine()) != null) {
+                Scanner sc = new Scanner(line);
+                sc.useDelimiter(",");
+                String internalName = sc.next();
+                minCarry.put(internalName.toLowerCase(), Integer.parseInt(sc.next()));
+                maxCarry.put(internalName.toLowerCase(), Integer.parseInt(sc.next()));
+                seeds.put(internalName.toLowerCase(), Integer.parseInt(sc.next()));
+                seedsMin.put(internalName.toLowerCase(), Integer.parseInt(sc.next()));
+                pokos.put(internalName.toLowerCase(), Integer.parseInt(sc.next()));
+                depth.put(internalName.toLowerCase(), (int)Double.parseDouble(sc.next()));
                 sc.close();
             }
             br.close();
@@ -500,5 +571,32 @@ class Parser {
             scDoorsFrom[i]      = tok2[3].equals("_") ? -1 : Integer.parseInt(tok2[3]);
             scDoorsTo[i]        = tok2[4].equals("_") ? -1 : Integer.parseInt(tok2[4]);
         }
+    }
+
+    static ArrayList<String> helpText = new ArrayList<String>();
+
+    static void helpText() {
+        if (helpText.size() > 0) return;
+        helpText.add("\nUsage: CaveGen.jar [Output] [Cave] [sublevelNum] ");
+        helpText.add("  Output: seed|cave|both|none is which folder the output is sent to.");
+        helpText.add("  Cave: tutorial1.txt|cmal|story|both|BK|SCx|CH1|CH2|...");
+        helpText.add("  Sublevel: 1|2|3|4|... or use 0 for the entire cave.");
+        helpText.add("\nOptional: -seed 0x12345678 -num 100 -consecutiveSeeds -challengeMode -storyMode");
+        helpText.add("  -noImages -noPrint -noStats -region [us|jpn|pal] -251 -caveInfoReport");
+        helpText.add("  -drawSpawnPoints -drawSpawnOrder -drawAngles -drawDoorIds -drawTreasureGauge -drawHoleProbs");
+        helpText.add("  -drawWayPoints -drawWPVertexDists -drawWPEdgeDists -drawAllWayPoints -noWayPointGraph");
+        helpText.add("  -drawScores -drawDoorLinks -drawEnemyScores -drawUnitHoleScores -drawUnitItemScores -drawAllScores");
+        helpText.add("  -drawNoWaterBox -drawNoFallType -drawNoGateLife -drawNoObjects -drawNoPlants");
+        helpText.add("  -drawNoBuriedItems -drawNoItems -drawNoTekis -drawNoGates -drawNoHoles");
+        helpText.add("  -findGoodLayouts 0.01 (this keeps the top 1% of layouts by jhawk's heuristic)");
+        helpText.add("  -requireMapUnits unitType,rot,idFrom,doorFrom,doorTo;...");
+        helpText.add("\nExample: CaveGen.jar seed story -seed 0x12345678 -drawSpawnPoints");
+        helpText.add("  This generates images of all levels in story mode with that seed.");
+        helpText.add("Example: CaveGen.jar cave BK 4 -num 100 -seed 0 -consecutiveSeeds");
+        helpText.add("  This generates images for 100 instances of BK4, checking seeds following 0.");
+        helpText.add("Example: CaveGen.jar none CH12 0 -num 10000");
+        helpText.add("  This generates stats for 10000 instances of concrete maze, no images.");
+        helpText.add("Example: CaveGen.jar caveinfo.txt 0");
+        helpText.add("  This generates the whole caveinfo.txt cave");
     }
 }

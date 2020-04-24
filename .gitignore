@@ -2,7 +2,6 @@
 *.class
 
 # Package Files #
-*.jar
 *.war
 *.nar
 *.ear
@@ -12,5 +11,11 @@
 
 output/*/*.png
 output/*
+output251/*
 !reports/*.txt
 *.png
+
+*~
+expected_output_this.txt
+
+.vscode*

@@ -1,6 +1,12 @@
 Feel free to use/modify this tool as you see fit
 If you have questions, ping the Pikmin Speedrunning or Hocotate Hacker Discord
-This tool needs to be run from the command line
+
+
+DOWNLOAD:
+Requires Java version 8 or later.
+https://github.com/JHaack4/CaveGen
+Click "Clone or Download" and download ZIP. Unzip it.
+Run the tool by double clicking CaveViewer.jar, or run from the command line as below.
 
 
 COMPILE:
@@ -37,7 +43,7 @@ drawSpawnPoints - draws locations where things can spawn
 drawSpawnOrder - draws order objects spawned in
 drawAngles - draws angles that things are facing
 drawDoorIds - draws door ids
-drawTreasureGauge - draws 5 rings to help you determine treasure gauge reads
+drawTreasureGauge - draws rings to help you determine treasure gauge reads
 drawHoleProbs - estimates contiditonal probabilities for the hole location in challenge mode
 drawWayPoints - draws the waypoint graph
 drawWPVertexDists - draws the distance from each waypoint to the pod
@@ -50,7 +56,6 @@ drawUnitHoleScores - draws the unitscores and doorscores for the hole phase
 drawUnitItemScores - draws the unitscores and doorscores for the item phase
 drawAllScores - does all five of the preceeding calls
 drawNoWaterBox - doesn't draw the blue waterboxes
-drawNoPlants - doesn't draw any plant icons
 drawNoFallType - doesn't draw the falltype indicators
 drawNoGateLife - doesn't draw the gate's life
 drawNoObjects - doesn't draw any objects
@@ -86,8 +91,8 @@ SPAWNPOINT KEY:
 FALLING KEY:
 0 nothing = not falling
 1 purple  = fall if anything near
-2 red     = only fall if pikmin near
-3 blue    = only fall if leader near
+2 blue    = only fall if pikmin near
+3 red     = only fall if leader near
 4 orange  = only fall if pikmin carrying near
 5 green   = only fall if a purple earthquake is nearby
 
